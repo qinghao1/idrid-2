@@ -14,7 +14,6 @@ import utils
 
 image_size = (512, 512,)
 
-
 class IdridConfig(Config):
     """Configuration for training on the toy shapes dataset.
     Derives from the base Config class and overrides values specific
