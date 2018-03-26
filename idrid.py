@@ -6,6 +6,7 @@ import numpy as np
 import glob
 import scipy.io as sio
 import skimage.transform as imtransform
+import scipy.ndimage as ndi
 import os
 from tqdm import tqdm
 
@@ -22,10 +23,10 @@ class IdridConfig(Config):
     # Give the configuration a recognizable name
     NAME = "idrid"
 
-    # Train on 1 GPU and 8 images per GPU. We can put multiple images on each
-    # GPU because the images are small. Batch size is 2 (GPUs * images/GPU).
+    # Train on 1 GPU and 16 images per GPU. We can put multiple images on each
+    # GPU because the images are small. Batch size is 16 (GPUs * images/GPU).
     GPU_COUNT = 1
-    IMAGES_PER_GPU = 2
+    IMAGES_PER_GPU = 16
 
     # Number of classes (including background)
     NUM_CLASSES = 1 + 5  # background + 4 lesions + OD
@@ -40,7 +41,7 @@ class IdridConfig(Config):
 
     # # Reduce training ROIs per image because the images are small and have
     # # few objects. Aim to allow ROI sampling to pick 33% positive ROIs.
-    # TRAIN_ROIS_PER_IMAGE = 128
+    TRAIN_ROIS_PER_IMAGE = 512
 
     # Use a small epoch since the data is simple
     STEPS_PER_EPOCH = 100
@@ -99,12 +100,19 @@ class IdridDataset(utils.Dataset):
                 if ground_truths[gt_label][0][0].shape[0]:
                     # Mask exists
                     lesion_mask = ground_truths[gt_label][0][0]
-                    lesion_mask = lesion_mask.reshape(lesion_mask.shape + (1,))
                     lesion_mask = imtransform.resize(lesion_mask, image_size)
                     lesion_mask[lesion_mask > 0] = 1
-                    # Add to class_id list 
-                    class_ids.append(class_num + 1) #+1 because start from 0
-                    lesion_masks = np.append(lesion_masks, lesion_mask, axis=2)
+                    # Separate lesions into instances
+                    structure = [[1,1,1],[1,1,1],[1,1,1]] # Consider diagonal pixels as same lesion
+                    labeled_lesions, num_instances = ndi.label(lesion_mask, structure=structure)
+                    # Add each instance to class_ids and lesion_masks
+                    #print("Found {} {} instances for image {}".format(num_instances, lesion_type, mat_file))
+                    for i in range(1, num_instances+1):
+                        class_ids.append(class_num + 1) #+1 because start from 0
+                        single_lesion = np.where(labeled_lesions == i, labeled_lesions, 0) # Select only that lesion, zero out others
+                        single_lesion[single_lesion > 0] = 1 # Reset elements back to 1 (was i)
+                        single_lesion = single_lesion.reshape(image_size + (1,))
+                        lesion_masks = np.append(lesion_masks, single_lesion, axis=2) # Append to lesion_masks
 
             # Add to self.images and self.masks
             self.images.append(image)
