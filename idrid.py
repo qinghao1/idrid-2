@@ -77,7 +77,7 @@ class IdridDataset(utils.Dataset):
         super().__init__(*args, **kwargs)
 
     # Returns tuple of (image_data, (lesion_masks, instance_ids))
-    def read_mat(mat_file_path):
+    def read_mat(self, mat_file_path):
         data = sio.loadmat(mat_file_path)
         image = data['I_cropped']
         ground_truths = data['GT']
