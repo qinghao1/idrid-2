@@ -53,7 +53,8 @@ class IdridConfig(Config):
 class IdridDataset(utils.Dataset):
     """
     Loads IDRiD dataset from .mat files.
-    Note that images and masks are pre-loaded into arrays to prevent re-reading of mat file.
+    To pre-load images and masks into memory, pass preload=True when calling __init__().
+    This is to prevent re-reading mat file but memory usage might be huge.
     """
 
     dataset_path = './images/raw/DR/'
@@ -65,11 +66,49 @@ class IdridDataset(utils.Dataset):
         'OD',
     ]
 
-    def __init__(self, *args, **kwargs):
-        # Preloaded image and mask arrays
-        self.images = []
-        self.masks = []
+    def __init__(self, preload = False, *args, **kwargs):
+        self.preload = preload
+        if preload:
+            # Preloaded image and mask arrays
+            self.images = []
+            self.masks = []
+        else:
+            self.image_paths = []
         super().__init__(*args, **kwargs)
+
+    # Returns tuple of (image_data, (lesion_masks, instance_ids))
+    def read_mat(mat_file_path):
+        data = sio.loadmat(mat_file_path)
+        image = data['I_cropped']
+        ground_truths = data['GT']
+
+        # Resize
+        image = imtransform.resize(image, image_size)
+        image *= 255
+
+        lesion_masks = [[[] for __ in range(image_size[1])] for _ in range(image_size[0])] #Empty 3d list
+        class_ids = []
+
+        for class_num, lesion_type in enumerate(self.lesion_types):
+            gt_label = lesion_type + "_mask"
+            if ground_truths[gt_label][0][0].shape[0]:
+                # Mask exists
+                lesion_mask = ground_truths[gt_label][0][0]
+                lesion_mask = imtransform.resize(lesion_mask, image_size)
+                lesion_mask[lesion_mask > 0] = 1
+                # Separate lesions into instances
+                structure = [[1,1,1],[1,1,1],[1,1,1]] # Consider diagonal pixels as same lesion
+                labeled_lesions, num_instances = ndi.label(lesion_mask, structure=structure)
+                # Add each instance to class_ids and lesion_masks
+                #print("Found {} {} instances for image {}".format(num_instances, lesion_type, mat_file_path))
+                for i in range(1, num_instances+1):
+                    class_ids.append(class_num + 1) #+1 because start from 0
+                    single_lesion = np.where(labeled_lesions == i, labeled_lesions, 0) # Select only that lesion, zero out others
+                    single_lesion[single_lesion > 0] = 1 # Reset elements back to 1 (was i)
+                    single_lesion = single_lesion.reshape(image_size + (1,))
+                    lesion_masks = np.append(lesion_masks, single_lesion, axis=2) # Append to lesion_masks
+
+        return (image, (lesion_masks, np.asarray(class_ids,)),)
 
     def load_idrid(self, subset='train'):
         """Generate the requested number of synthetic images.
@@ -80,48 +119,24 @@ class IdridDataset(utils.Dataset):
             self.add_class("idrid", idx + 1, lesion_type)
 
         # Add images
-        for image_id, mat_file in enumerate(tqdm(glob.glob(self.dataset_path + subset + '/*.mat'))):
-            # Read
-            data = sio.loadmat(mat_file)
-            image = data['I_cropped']
-            ground_truths = data['GT']
+        for image_id, mat_file_path in enumerate(tqdm(glob.glob(self.dataset_path + subset + '/*.mat'))):
+            self.add_image("idrid", image_id, mat_file_path)
 
-            self.add_image("idrid", image_id, mat_file) #Note that path is .mat file
+            if self.preload:
+                image_data, mask_data = read_mat(mat_file_path)
+                self.images.append(image_data)
+                self.masks.append(mask_data)
 
-            # Resize
-            image = imtransform.resize(image, image_size)
-            image *= 255
-
-            lesion_masks = [[[] for __ in range(image_size[1])] for _ in range(image_size[0])] #Empty 3d list
-            class_ids = []
-
-            for class_num, lesion_type in enumerate(self.lesion_types):
-                gt_label = lesion_type + "_mask"
-                if ground_truths[gt_label][0][0].shape[0]:
-                    # Mask exists
-                    lesion_mask = ground_truths[gt_label][0][0]
-                    lesion_mask = imtransform.resize(lesion_mask, image_size)
-                    lesion_mask[lesion_mask > 0] = 1
-                    # Separate lesions into instances
-                    structure = [[1,1,1],[1,1,1],[1,1,1]] # Consider diagonal pixels as same lesion
-                    labeled_lesions, num_instances = ndi.label(lesion_mask, structure=structure)
-                    # Add each instance to class_ids and lesion_masks
-                    #print("Found {} {} instances for image {}".format(num_instances, lesion_type, mat_file))
-                    for i in range(1, num_instances+1):
-                        class_ids.append(class_num + 1) #+1 because start from 0
-                        single_lesion = np.where(labeled_lesions == i, labeled_lesions, 0) # Select only that lesion, zero out others
-                        single_lesion[single_lesion > 0] = 1 # Reset elements back to 1 (was i)
-                        single_lesion = single_lesion.reshape(image_size + (1,))
-                        lesion_masks = np.append(lesion_masks, single_lesion, axis=2) # Append to lesion_masks
-
-            # Add to self.images and self.masks
-            self.images.append(image)
-            self.masks.append((lesion_masks, np.asarray(class_ids),))
-
-
-    # Load image and mask from memory so it's faster
     def load_image(self, image_id):
-        return self.images[image_id]
+        if self.preload:
+            return self.images[image_id]
+        else:
+            image_path = source_image_link(image_id)
+            return read_mat(image_path)[0]
 
     def load_mask(self, image_id):
-        return self.masks[image_id]
+        if self.preload:
+            return self.masks[image_id]
+        else:
+            image_path = source_image_link(image_id)
+            return read_mat(image_path)[1]
