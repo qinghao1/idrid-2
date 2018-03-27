@@ -123,7 +123,7 @@ class IdridDataset(utils.Dataset):
             self.add_image("idrid", image_id, mat_file_path)
 
             if self.preload:
-                image_data, mask_data = read_mat(mat_file_path)
+                image_data, mask_data = self.read_mat(mat_file_path)
                 self.images.append(image_data)
                 self.masks.append(mask_data)
 
@@ -131,12 +131,12 @@ class IdridDataset(utils.Dataset):
         if self.preload:
             return self.images[image_id]
         else:
-            image_path = source_image_link(image_id)
-            return read_mat(image_path)[0]
+            image_path = self.source_image_link(image_id)
+            return self.read_mat(image_path)[0]
 
     def load_mask(self, image_id):
         if self.preload:
             return self.masks[image_id]
         else:
-            image_path = source_image_link(image_id)
-            return read_mat(image_path)[1]
+            image_path = self.source_image_link(image_id)
+            return self.read_mat(image_path)[1]
