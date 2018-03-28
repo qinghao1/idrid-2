@@ -101,18 +101,19 @@ class IdridDataset(utils.Dataset):
                 structure = [[1,1,1],[1,1,1],[1,1,1]] # Consider diagonal pixels as same lesion
                 labeled_lesions, num_instances = ndi.label(lesion_mask, structure=structure)
                 # Add each instance to class_ids and lesion_masks
-                #print("Found {} {} instances for image {}".format(num_instances, lesion_type, mat_file_path))
+                num_below_threshold = 0 # Number of lesions with mask area <= threshold
                 for i in range(1, num_instances+1):
                     single_lesion = np.where(labeled_lesions == i, labeled_lesions, 0) # Select only that lesion, zero out others
                     single_lesion[single_lesion > 0] = 1 # Reset elements back to 1 (was i)
-
                     #Select only lesions with area > mask_area_threshold
                     if np.sum(single_lesion) <= mask_area_threshold:
+                        num_below_threshold += 1
                         continue
-
                     single_lesion = single_lesion.reshape(image_size + (1,))
                     lesion_masks = np.append(lesion_masks, single_lesion, axis=2) # Append to lesion_masks
                     class_ids.append(class_num + 1) #+1 because start from 0
+
+                print("Found {} {} instances for {}".format(num_instances - num_below_threshold, lesion_type, mat_file_path))
 
         return (image, (lesion_masks, np.asarray(class_ids,)),)
 
