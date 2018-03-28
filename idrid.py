@@ -14,6 +14,7 @@ from config import Config
 import utils
 
 image_size = (512, 512,)
+mask_area_threshold = 2 # Lesion masks with area <= this threshold are dropped, to save space.
 
 class IdridConfig(Config):
     """Configuration for training on the toy shapes dataset.
@@ -23,10 +24,10 @@ class IdridConfig(Config):
     # Give the configuration a recognizable name
     NAME = "idrid"
 
-    # Train on 1 GPU and 16 images per GPU. We can put multiple images on each
-    # GPU because the images are small. Batch size is 16 (GPUs * images/GPU).
+    # Train on 1 GPU and 2 images per GPU. We can put multiple images on each
+    # GPU because the images are small. Batch size is 2 (GPUs * images/GPU).
     GPU_COUNT = 1
-    IMAGES_PER_GPU = 16
+    IMAGES_PER_GPU = 2
 
     # Number of classes (including background)
     NUM_CLASSES = 1 + 5  # background + 4 lesions + OD
@@ -41,7 +42,7 @@ class IdridConfig(Config):
 
     # # Reduce training ROIs per image because the images are small and have
     # # few objects. Aim to allow ROI sampling to pick 33% positive ROIs.
-    TRAIN_ROIS_PER_IMAGE = 512
+    TRAIN_ROIS_PER_IMAGE = 256
 
     # Use a small epoch since the data is simple
     STEPS_PER_EPOCH = 100
@@ -102,11 +103,16 @@ class IdridDataset(utils.Dataset):
                 # Add each instance to class_ids and lesion_masks
                 #print("Found {} {} instances for image {}".format(num_instances, lesion_type, mat_file_path))
                 for i in range(1, num_instances+1):
-                    class_ids.append(class_num + 1) #+1 because start from 0
                     single_lesion = np.where(labeled_lesions == i, labeled_lesions, 0) # Select only that lesion, zero out others
                     single_lesion[single_lesion > 0] = 1 # Reset elements back to 1 (was i)
+
+                    #Select only lesions with area > mask_area_threshold
+                    if np.sum(single_lesion) <= mask_area_threshold:
+                        continue
+
                     single_lesion = single_lesion.reshape(image_size + (1,))
                     lesion_masks = np.append(lesion_masks, single_lesion, axis=2) # Append to lesion_masks
+                    class_ids.append(class_num + 1) #+1 because start from 0
 
         return (image, (lesion_masks, np.asarray(class_ids,)),)
 
