@@ -14,7 +14,7 @@ from config import Config
 import utils
 
 image_size = (512, 512,)
-mask_area_threshold = 2 # Lesion masks with area <= this threshold are dropped, to save space.
+mask_area_threshold = 5 # Lesion masks with area <= this threshold are dropped, to save space.
 
 class IdridConfig(Config):
     """Configuration for training on the toy shapes dataset.
@@ -33,6 +33,10 @@ class IdridConfig(Config):
     NUM_CLASSES = 1 + 5  # background + 4 lesions + OD
                          # (MA/Microaneurysm, HE/Hemorrhage, EX/Hard Exudate, SE/Soft Exudate)
 
+    # Use resnet50 instead of resnet101 for backbone, to reduce memory usage
+    BACKBONE = "resnet50"
+    # BACKBONE_STRIDES = [4, 8, 16, 32]
+
     # Images are constant height and width
     IMAGE_MIN_DIM = image_size[0]
     IMAGE_MAX_DIM = image_size[1]
@@ -42,7 +46,7 @@ class IdridConfig(Config):
 
     # # Reduce training ROIs per image because the images are small and have
     # # few objects. Aim to allow ROI sampling to pick 33% positive ROIs.
-    TRAIN_ROIS_PER_IMAGE = 256
+    # TRAIN_ROIS_PER_IMAGE = 200
 
     # Use a small epoch since the data is simple
     STEPS_PER_EPOCH = 100
@@ -113,7 +117,7 @@ class IdridDataset(utils.Dataset):
                     lesion_masks = np.append(lesion_masks, single_lesion, axis=2) # Append to lesion_masks
                     class_ids.append(class_num + 1) #+1 because start from 0
 
-                print("Found {} {} instances for {}".format(num_instances - num_below_threshold, lesion_type, mat_file_path))
+                # print("Found {} {} instances for {}".format(num_instances - num_below_threshold, lesion_type, mat_file_path))
 
         return (image, (lesion_masks, np.asarray(class_ids,)),)
 
@@ -126,7 +130,9 @@ class IdridDataset(utils.Dataset):
             self.add_class("idrid", idx + 1, lesion_type)
 
         # Add images
-        for image_id, mat_file_path in enumerate(tqdm(glob.glob(self.dataset_path + subset + '/*.mat'))):
+        image_list = glob.glob(self.dataset_path + subset + '/*.mat')
+        random.shuffle(image_list)
+        for image_id, mat_file_path in enumerate(tqdm(image_list)):
             self.add_image("idrid", image_id, mat_file_path)
 
             if self.preload:
