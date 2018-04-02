@@ -46,10 +46,10 @@ class IdridConfig(Config):
 
     # # Reduce training ROIs per image because the images are small and have
     # # few objects. Aim to allow ROI sampling to pick 33% positive ROIs.
-    # TRAIN_ROIS_PER_IMAGE = 200
+    TRAIN_ROIS_PER_IMAGE = 600
 
     # Use a small epoch since the data is simple
-    STEPS_PER_EPOCH = 200
+    STEPS_PER_EPOCH = 100
 
     # use small validation steps since the epoch is small
     VALIDATION_STEPS = 5
@@ -71,7 +71,7 @@ class IdridDataset(utils.Dataset):
         'OD',
     ]
 
-    def __init__(self, preload = False, *args, **kwargs):
+    def __init__(self, preload = True, *args, **kwargs):
         self.preload = preload
         if preload:
             # Preloaded image and mask arrays
