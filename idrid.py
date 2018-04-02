@@ -14,7 +14,7 @@ from config import Config
 import utils
 
 image_size = (512, 512,)
-mask_area_threshold = 2 # Lesion masks with area <= this threshold are dropped, to save space.
+mask_area_threshold = 0 # Lesion masks with area <= this threshold are dropped, to save space.
 
 class IdridConfig(Config):
     """Configuration for training on the toy shapes dataset.
@@ -42,10 +42,10 @@ class IdridConfig(Config):
 
     # # Reduce training ROIs per image because the images are small and have
     # # few objects. Aim to allow ROI sampling to pick 33% positive ROIs.
-    TRAIN_ROIS_PER_IMAGE = 256
+    TRAIN_ROIS_PER_IMAGE = 600
 
     # Use a small epoch since the data is simple
-    STEPS_PER_EPOCH = 100
+    STEPS_PER_EPOCH = 300
 
     # use small validation steps since the epoch is small
     VALIDATION_STEPS = 5
