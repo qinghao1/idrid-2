@@ -13,8 +13,8 @@ from tqdm import tqdm
 from config import Config
 import utils
 
-image_size = (512, 512,)
-mask_area_threshold = 5 # Lesion masks with area <= this threshold are dropped, to save space.
+image_size = (384, 384,)
+mask_area_threshold = 10 # Lesion masks with area <= this threshold are dropped, to save space.
 
 class IdridConfig(Config):
     """Configuration for training on the toy shapes dataset.
@@ -27,14 +27,14 @@ class IdridConfig(Config):
     # Train on 1 GPU and 2 images per GPU. We can put multiple images on each
     # GPU because the images are small. Batch size is 2 (GPUs * images/GPU).
     GPU_COUNT = 1
-    IMAGES_PER_GPU = 2
+    IMAGES_PER_GPU = 1
 
     # Number of classes (including background)
     NUM_CLASSES = 1 + 5  # background + 4 lesions + OD
                          # (MA/Microaneurysm, HE/Hemorrhage, EX/Hard Exudate, SE/Soft Exudate)
 
     # Use resnet50 instead of resnet101 for backbone, to reduce memory usage
-    BACKBONE = "resnet50"
+    # BACKBONE = "resnet50"
     # BACKBONE_STRIDES = [4, 8, 16, 32]
 
     # Images are constant height and width
@@ -49,7 +49,7 @@ class IdridConfig(Config):
     # TRAIN_ROIS_PER_IMAGE = 200
 
     # Use a small epoch since the data is simple
-    STEPS_PER_EPOCH = 100
+    STEPS_PER_EPOCH = 200
 
     # use small validation steps since the epoch is small
     VALIDATION_STEPS = 5
