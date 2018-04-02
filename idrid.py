@@ -67,7 +67,7 @@ class IdridDataset(utils.Dataset):
         'OD',
     ]
 
-    def __init__(self, preload = False, *args, **kwargs):
+    def __init__(self, preload = True, *args, **kwargs):
         self.preload = preload
         if preload:
             # Preloaded image and mask arrays
@@ -113,7 +113,7 @@ class IdridDataset(utils.Dataset):
                     lesion_masks = np.append(lesion_masks, single_lesion, axis=2) # Append to lesion_masks
                     class_ids.append(class_num + 1) #+1 because start from 0
 
-                print("Found {} {} instances for {}".format(num_instances - num_below_threshold, lesion_type, mat_file_path))
+                # print("Found {} {} instances for {}".format(num_instances - num_below_threshold, lesion_type, mat_file_path))
 
         return (image, (lesion_masks, np.asarray(class_ids,)),)
 
