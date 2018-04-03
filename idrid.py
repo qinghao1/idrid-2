@@ -14,7 +14,7 @@ from config import Config
 import utils
 
 image_size = (384, 384,)
-mask_area_threshold = 10 # Lesion masks with area <= this threshold are dropped, to save space.
+mask_area_threshold = 2 # Lesion masks with area <= this threshold are dropped, to save space.
 
 class IdridConfig(Config):
     """Configuration for training on the toy shapes dataset.
@@ -27,7 +27,7 @@ class IdridConfig(Config):
     # Train on 1 GPU and 2 images per GPU. We can put multiple images on each
     # GPU because the images are small. Batch size is 2 (GPUs * images/GPU).
     GPU_COUNT = 1
-    IMAGES_PER_GPU = 1
+    IMAGES_PER_GPU = 2
 
     # Number of classes (including background)
     NUM_CLASSES = 1 + 5  # background + 4 lesions + OD
@@ -46,7 +46,7 @@ class IdridConfig(Config):
 
     # # Reduce training ROIs per image because the images are small and have
     # # few objects. Aim to allow ROI sampling to pick 33% positive ROIs.
-    TRAIN_ROIS_PER_IMAGE = 600
+    TRAIN_ROIS_PER_IMAGE = 300
 
     # Use a small epoch since the data is simple
     STEPS_PER_EPOCH = 100
@@ -122,9 +122,6 @@ class IdridDataset(utils.Dataset):
         return (image, (lesion_masks, np.asarray(class_ids,)),)
 
     def load_idrid(self, subset='train'):
-        """Generate the requested number of synthetic images.
-        subset: train or test, or a valid folder name
-        """
         # Add classes
         for idx, lesion_type in enumerate(self.lesion_types):
             self.add_class("idrid", idx + 1, lesion_type)
