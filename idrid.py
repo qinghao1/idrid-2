@@ -27,7 +27,7 @@ class IdridConfig(Config):
     # Train on 1 GPU and 2 images per GPU. We can put multiple images on each
     # GPU because the images are small. Batch size is 2 (GPUs * images/GPU).
     GPU_COUNT = 1
-    IMAGES_PER_GPU = 2
+    IMAGES_PER_GPU = 1
 
     # Number of classes (including background)
     NUM_CLASSES = 1 + 5  # background + 4 lesions + OD
