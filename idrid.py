@@ -14,7 +14,7 @@ from config import Config
 import utils
 
 image_size = (384, 384,)
-mask_area_threshold = 2 # Lesion masks with area <= this threshold are dropped, to save space.
+mask_area_threshold = 4 # Lesion masks with area <= this threshold are dropped, to save space.
 
 class IdridConfig(Config):
     """Configuration for training on the toy shapes dataset.
